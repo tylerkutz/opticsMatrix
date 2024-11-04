@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
 	MatrixFitter* mFit = new MatrixFitter(fitVar);
 	inputDataMan->SetMatrixFitter(mFit);
 
-
+	inputDataMan->GetRadiativeTailCut();
 	inputDataMan->ProcessEvents();
 
 	mFit->FitMatrix();
