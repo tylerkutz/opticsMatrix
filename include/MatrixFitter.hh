@@ -16,8 +16,14 @@ public:
 	TMultiDimFit* fFit;	
 
 private:
-	int fFitVar;
 
+	static const int nVars = 4;
+	std::string fVarNames[nVars] = {"r", "r_prime", "phi", "phi_prime"};
+
+	static const int nDepVars = 2;
+	std::string fDepVarNames[nDepVars] = {"theta_targ", "phi_targ"};
+
+	int fFitDepVar;		// index of dependent variable being fit
 
 
 };

@@ -4,11 +4,10 @@
 #include "MatrixFitter.hh"
 
 
-MatrixFitter::MatrixFitter(int fitvar) {
+MatrixFitter::MatrixFitter(int fitdepvar) {
 
-	fFitVar = fitvar;
+	fFitDepVar = fitdepvar;
 
-	int nVars = 4;
 			//	r  r' ph ph'
 	int mPowers[] = {	0, 0, 0, 0,
 				1, 0, 0, 0,
@@ -36,11 +35,11 @@ MatrixFitter::~MatrixFitter() {
 }
 
 void MatrixFitter::AddTrain(double* V, double* D, double E) {
-	fFit->AddRow(V, D[fFitVar], E);
+	fFit->AddRow(V, D[fFitDepVar], E);
 }
 
 void MatrixFitter::AddTest(double* V, double* D, double E) {
-	fFit->AddTestRow(V, D[fFitVar], E);
+	fFit->AddTestRow(V, D[fFitDepVar], E);
 }
 
 void MatrixFitter::FitMatrix() {
@@ -52,6 +51,11 @@ void MatrixFitter::FitMatrix() {
         fFit->Print("rc");
 	fFit->Fit("M");
 	fFit->Print("fc v");
-	fFit->MakeCode(Form("mdf_fitvar_%i",fFitVar));
+	fFit->MakeCode(Form("mdf_fitvar_%i",fFitDepVar));
+	const TVectorD* fitCoeff = fFit->GetCoefficients();
+	std::cout << "Best fit coefficients:" << std::endl;
+	fitCoeff->Print();
+	std::cout << std::endl;
+	
 
 }
