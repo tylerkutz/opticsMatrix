@@ -10,6 +10,12 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TTreeReader.h"
+#include "TH1F.h"
+#include "TROOT.h"
+#include "TLine.h"
+#include "TPad.h"
+#include "TCanvas.h"
+#include "TStyle.h"
 
 using namespace std;
 
@@ -18,8 +24,7 @@ InputDataManager::InputDataManager(TString inFileName, TString inTreeName) {
 	fFile = new TFile(inFileName);
 	fTree = (TTree*)fFile->Get(inTreeName);	
 	
-	GenerateTrainingIndex(0.6);
-	
+	GenerateTrainingIndex(0.5);
 
 }
 
@@ -35,8 +40,7 @@ void InputDataManager::SetRemollBranchNames() {
 	gemPx_branch 	= "gem1_px";
 	gemPy_branch 	= "gem1_py";
 	gemPz_branch 	= "gem1_pz";
-	
-	SetTreeReader();
+	holeID_branch	= "hole_id";	
 
 }
 
@@ -59,7 +63,7 @@ void InputDataManager::SetTreeReader() {
 	gemPx_val 	= new TTreeReaderValue<double>(*fReader, gemPx_branch);
 	gemPy_val 	= new TTreeReaderValue<double>(*fReader, gemPy_branch);
 	gemPz_val 	= new TTreeReaderValue<double>(*fReader, gemPz_branch);
-	holeID_val 	= new TTreeReaderValue<int>(*fReader, "hole_id");
+	holeID_val 	= new TTreeReaderValue<int>(*fReader, holeID_branch);
 
 }
 
@@ -67,15 +71,21 @@ void InputDataManager::ProcessEvents() {
 
 	int ev = 0;
 
+	SetTreeReader();
 	while(fReader->Next()) {
 	
 		GetValues();
 
+		if(gemPhi < 0.) gemPhi+=2.*M_PI;
+		
 		gemRp 	= (gemX*gemPx + gemY*gemPy) / (gemR*gemPz);
 		gemPhip	= (gemX*gemPy - gemY*gemPx) / (gemR*gemPz);
 
+		if(gemR > radCutMaxR[holeID]) continue;
+
 		double sievePhi = fSieveMap->GetHolePhi(holeID);
-		double sieveTheta = fSieveMap->GetHoleTheta(holeID, 600.);
+		if(sievePhi < 0) sievePhi+=2.*M_PI;
+		double sieveTheta = fSieveMap->GetHoleTheta(holeID);
 
 		double X[4] = {gemR, gemRp, gemPhi, gemPhip};
 		double D[] = {sieveTheta, sievePhi};
@@ -89,39 +99,7 @@ void InputDataManager::ProcessEvents() {
 
 		ev++;	
 	}
-/*
-	double* varMin = new double[4];
-	double* varMax = new double[4];
-	for(int i = 0; i < 4; i++) {
-		varMin[i] = (*fMFitter->fFit->GetMinVariables())(i);
-		varMax[i] = (*fMFitter->fFit->GetMaxVariables())(i);
-	}
 
-	fReader->Restart();
-	ev = 0;
-	while(fReader->Next()) {
-
-		GetValues();
-		
-		gemRp 	= (gemX*gemPx + gemY*gemPy) / (gemR*gemPz);
-		gemPhip	= (gemX*gemPy - gemY*gemPx) / (gemR*gemPz);
-
-		double sievePhi = fSieveMap->GetHolePhi(holeID);
-		double sieveTheta = fSieveMap->GetHoleTheta(holeID);
-
-		double X[4] = {gemR, gemRp, gemPhi, gemPhip};
-		double D = sieveTheta;
-		double E = 0.;
-
-		bool outOfRange = false;
-		for(int iv = 0; iv < 4; iv++) {
-			if(X[i] < varMin[i] || X[i] > varMax[i]) outOfRange = true;
-		}
-
-		if(outOfRange || ) continue;
-
-	}
-*/
 }
 
 void InputDataManager::GetValues() {
@@ -155,6 +133,53 @@ void InputDataManager::GenerateTrainingIndex(double trainingFraction) {
 }
 
 
+void InputDataManager::GetRadiativeTailCut() {
+
+	vector<int> holeIDs = fSieveMap->GetListOfHoleIDs();
+
+	TH1F* rad1 = new TH1F("rad1", "", 100, 650, 1150); 
+
+	gROOT->SetBatch(kTRUE);
+	TCanvas* c1 = new TCanvas("c1", "", 700, 500);
+	gStyle->SetOptStat(0);
+
+	TLine* lrmax = new TLine(0.,0.,1.,1.);
+	lrmax->SetLineColor(2);
+
+	for(const int& holeid : holeIDs) {
+		
+		fTree->Draw(gemR_branch + ">>rad1", Form("hole_id==%i", holeid), "GOFF");
+
+		double holeCenter = rad1->GetBinCenter(rad1->GetMaximumBin());
+
+		double rMin = holeCenter - 50.;
+		double rMax = holeCenter + 50.;
+
+		TH1F* rad2 = new TH1F("rad2", "", 100, rMin, rMax);
+		rad2->GetXaxis()->SetTitle("r (mm)");
+		rad2->SetTitle(Form("Hole %i", holeid));
+
+		fTree->Draw(gemR_branch + ">>rad2", Form("hole_id==%i", holeid), "GOFF");
+
+		double rMean = rad2->GetMean();
+		double rRMS = rad2->GetRMS();
+
+		radCutMaxR[holeid] = rMean + 2.*rRMS;
+
+		rad2->Draw();
+		c1->Update();
+		lrmax->SetX1(radCutMaxR[holeid]);
+	       	lrmax->SetY1(0.);
+		lrmax->SetX2(radCutMaxR[holeid]);
+		lrmax->SetY2(gPad->GetUymax());
+		lrmax->Draw("SAME");
+		c1->SaveAs(Form("rad_cut_hole_%i.pdf",holeid));			
+
+		rad2->Delete();
+
+	}
+
+}
 
 
 

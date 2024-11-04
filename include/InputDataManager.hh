@@ -25,6 +25,7 @@ public:
 	
 	inline void SetSieveMap(SieveMap* sm) {fSieveMap = sm;}
 	inline void SetMatrixFitter(MatrixFitter* mf) {fMFitter = mf;}
+	void GetRadiativeTailCut();
 
 	void SetTreeReader(); 
 
@@ -41,6 +42,8 @@ private:
 
 	void GenerateTrainingIndex(double);
 	std::vector<int> trainingIndex;
+	
+	std::map<int, double> radCutMaxR;
 
 	// Input values
 	double gemR;
@@ -73,6 +76,7 @@ private:
 	TString gemPx_branch = "";
 	TString gemPy_branch = "";
 	TString gemPz_branch = "";
+	TString holeID_branch = "";
 
 };
 
