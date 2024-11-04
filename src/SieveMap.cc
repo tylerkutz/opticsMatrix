@@ -16,7 +16,11 @@ SieveMap::SieveMap(TString sieveHoleFile) {
 	LoadSieveHoles(sieveHoleFile);
 
 	sieve_z = 4700.;
-
+	
+	// Default is downstream foil
+	// Can be changed with SieveMap::SetFoilZ
+	foil_z = 600.; 
+	
 }
 
 SieveMap::~SieveMap() {
@@ -34,6 +38,7 @@ void SieveMap::LoadSieveHoles(TString sieveHoleFile) {
 
 	while(holeIn >> holeid >> thisR >> thisPhi >> thisTheta) {
 
+		listOfHoleIDs.push_back(holeid);
 		SieveHole thisHole;
 		thisHole.R = thisR;
 		thisHole.Theta = thisTheta;
@@ -48,10 +53,8 @@ void SieveMap::LoadSieveHoles(TString sieveHoleFile) {
 
 }
 
-double SieveMap::GetHoleTheta(int holeid, double zfoil) {
+double SieveMap::GetHoleTheta(int holeid) {
 
-	return atan(sieveMap[holeid].R / (sieve_z - zfoil));
+	return atan(sieveMap[holeid].R / (sieve_z - foil_z));
 
 }
-
-
